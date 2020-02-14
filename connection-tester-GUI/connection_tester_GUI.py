@@ -9,7 +9,7 @@ import csv,time,os,subprocess
 #!For gmail accounts less secure app access MUST be enabled
 #!https://myaccount.google.com/lesssecureapps
 
-print("The Simple Connection Tester v1.0.2")
+print("The Simple Connection Tester v1.1.1")
 
 issue_start_time = 0            #logs the time of the first failure occurence
 email_notification_every = 3600 #sets the interval that the emails will be periodically resent

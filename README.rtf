@@ -1,0 +1,113 @@
+{\rtf1\ansi\ansicpg1252\deff0\nouicompat\deflang1033{\fonttbl{\f0\fnil\fcharset0 Calibri;}}
+{\*\generator Riched20 10.0.18362}\viewkind4\uc1 
+\pard\sl276\slmult1\f0\fs22\lang9 #The Simple Connection Tester v1.1.1\par
+#Samuel Bravo, 02/14/2020\par
+NOTE: For the best readability, view this text using wordPad.\par
+\par
+Connection Tester & Webpage Generator\par
+\par
+Uses ICMP to test the connection to a list of IP address. Failed attempts generate an email notification. The state of each device is tracked independently so that notifications can be generated on a per device basis periodically. Then after the connections have all been tested and HTML page is generated with all of the devices organized into tables dynamically. The devices location and connection status is diplayed in the tables.\par
+\par
+Sections\par
+1. Installation\par
+2. Configuration Files\par
+3. Default Configurations\par
+4. Function Definitions\par
+5. HTML Generator\par
+\par
+1. ---------------------------------------------------------------------------------------------------------------------\par
+Installation:\par
+  1. Place main.py and definitions.py into an empty directory.\par
+  2. Create the following files exactly as they appear:\par
+\tab server_info.csv\par
+\tab creds.csv\par
+\tab hosts.csv\par
+\tab email_recipients.csv\par
+  3. Populate each file with the appropriate information (see bellow for more details).\par
+  4. Run main.py to start the program\par
+\par
+2. ---------------------------------------------------------------------------------------------------------------------\par
+Changing configuration files:\par
+\par
+Because all of the information that the script uses is stored in separate files, modifying them is simple. For instance; to add or remove hosts simply modify the entries in the hosts.csv file. If you'd like to add or remove admin email addresses from the recipient list, simply update email_recipients.csv. The changes will take effect in the next iteration of the scripts main loop.\par
+\par
+server_info.csv\par
+
+\pard\li720\sl276\slmult1  Contains the address of the server being used to send the notifications and the port# it's listening on. Create a single entry using the following syntax: "server_address,port#" (Ex - 10.1.1.254,587)\par
+
+\pard\sl276\slmult1\par
+creds.csv \par
+
+\pard\li720\sl276\slmult1 Contains the login credentials for the server being used to send the notifications. For security reasons a private internal email server is recommended as well as an account being used souly to receive these notifications. Create a single entry using the following syntax: "username,password".\par
+
+\pard\sl276\slmult1\par
+hosts.csv \par
+
+\pard\li720\sl276\slmult1 Contains section headers all the host IP address, descriptions, and location information. All of the hosts in this file will be tested for connectivity. Each host entry will contain 4 fields and must use the following syntax: "hostIP,description,location,0" (Ex - 10.1.1.254,Cisco Router,Bldg 6 MDF 101,0)\par
+\par
+Section headers begin with # and are used to group host entries into logical domains. They're also used by the HTML generator when creating tables and to control formatting.\par
+
+\pard\li720\sl240\slmult1 Ex.\tab #Building 406\par
+   \tab 10.254.100.1,Switch1-Stack,B406-MDF107,0\par
+\par
+
+\pard\li720\sl276\slmult1 NOTE: keep the section headers short, the number of characters will effect the HTML column width.\par
+NOTE: the last field containing the 0 is used by the program to track the state of the device, therefore it MUST be included.\par
+
+\pard\sl276\slmult1\par
+email_recipients.csv\par
+
+\pard\li720\sl276\slmult1 Contains the email address of all the recipients that will get a notification when a connection fails. Simply add each email address separated by a comma (Ex - admin_1@company.net,admin_2@compay.net,sysadmin@company.net"\par
+\par
+
+\pard\sl276\slmult1 3. ---------------------------------------------------------------------------------------------------------------------\par
+Default configurations:\par
+\par
+Logging:\par
+When main.py first runs /logs/logfile.txt will automatically be created. A new log file will be generated daily and will contain entries of the failed/restored devices. If no issues occurred, the file will remain empty. By default 150 log files will be created to keep a back log for approximately 5 months. Once exceeded the oldest logs will begin to be automatically deleted.\par
+\par
+Periodic Interval:\par
+Connections are tested every 300 seconds (5min). To modify it change the main.py variable "periodicInterval = (sec)"\par
+\par
+checkPing() will attempt a connection 3 times before declaring it as failed. To adjust to number of attempts change the line containing "while(count < #):" so that # is equal to the number of desired attempts - 1.\par
+\par
+Once an issue occurs it will be tracked until the connection succeeds. By default an email alert for an issue being tracked will be sent every 60 minutes. To change the notification interval change the value of "email_notification_every" in main.py the integer specified is the number of seconds between notifications.\par
+\par
+Debugging:\par
+By default debugging is turned off, to enable debugging set "debug_on=True" in main.py. Debugging logs are generated during the programs run time, allowing you to see the what the program is doing (or not doing). The debug.txt file will be created automatically and can be viewed while the program is running, once the program is terminated the logs will be erased.\par
+\par
+4. ---------------------------------------------------------------------------------------------------------------------\par
+Functions - definition.py\par
+\par
+checkPing(ip_address):\par
+
+\pard\li720\sl276\slmult1 Attempts to send an ICMP echo-request to the specified \tab ip_address. If the first attempt fails 2 more requests are sent. If those attempts also fail return False, or if any of the attempts succeed return True.\par
+
+\pard\sl276\slmult1\par
+sendEmail(sender,passwd,recipients,body,subject,serverInfo):\par
+\tab sender: username used to log into the email server.\par
+\tab passwd: password used to log into the email server.\par
+\tab recipients: the list of destination email addresses.\par
+\tab body: the message text being sent.\par
+\tab subject: email subject field defined by the admin.\par
+\tab serverInfo: list containing the email servers ip and port#.                                                                                                                                                                                        The above information is compiled together to generate an email notification. A secured connection to the SMTP server is established using TLS, then the login credentials are sent. If the login authentication succeeds, the email(s) is sent then the connection is terminated.\par
+\par
+creat_log_file():\par
+
+\pard\li720\sl276\slmult1 Controls the creation of log files using the current date so that a new logfile is created every 24hrs. Also tracks the log files count and removes older files once the total file count exceeds 150.\par
+Generates a logfile name using the current date, then checks to see if a log folder exists in the current directory. If the folder isn't found then it's created along with a logfile using the name that was generated. Then the current time/ date are added to the first line of the file and the file's name is returned.\par
+If the folder already existed, then it checks to see if there's already a file using the name that was generated. If there is a logfile already created, return the name of that file. The number of log files stored in the logs folder is then counted. If it exceeds 150, the oldest logs are automatically deleted.\par
+\par
+
+\pard\sl276\slmult1 5. ---------------------------------------------------------------------------------------------------------------------\par
+HTML Generator\par
+Once the connections have been tested an index.html file is created and a default header is written to it. Then tables are generated using the section headers in the host.csv file and up to 21 rows are added. Once the maximum number of rows is reached a new table is created, allowing for up to 5 tables. The tables use a simple CSS color scheme for readability.\par
+\par
+CSS (.masonry) \par
+Mainly controls the ability to dynamically generate tables and keep them uniformed. Also sets some other basic styling and controls default colors for the table.\par
+Table Color Scheme - The cell shading transitions between cyan and khaki. The transition is trigged every time a section header is encountered in the host.csv file. Rows that contain the section headers are colored orange with bold font.\par
+\par
+Tables\par
+Each table contains 22 rows including the header. All rows use the same default format and are modified based on the whether its a section header or host entry. In the host.csv file, lines that begin with # are section headers and are used to control the proceeding rows/tables formatting. This allows sections to span across multiple tables using the cell  colors for readability.\par
+}
+ 
