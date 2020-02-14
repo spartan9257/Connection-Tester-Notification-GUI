@@ -3,13 +3,13 @@ from subprocess import check_output
 from os import path
 import csv,time,os,subprocess 
 
-#The Simple Connection Tester v1.1.1
+#The Simple Connection Tester v1.1.2
 #Samuel Bravo, 02/14/2020
 
 #!For gmail accounts less secure app access MUST be enabled
 #!https://myaccount.google.com/lesssecureapps
 
-print("The Simple Connection Tester v1.1.1")
+print("The Simple Connection Tester v1.1.2")
 
 issue_start_time = 0            #logs the time of the first failure occurence
 email_notification_every = 3600 #sets the interval that the emails will be periodically resent
@@ -18,12 +18,14 @@ last_email_sent_time = 0        #saves the time that the last email was sent
 prior_email_sent = False 
 detectedFailures = False
 failedDevices = []              #maintains a list of the host's whos connection failed
-periodicInterval = 10           #Time in seconds between connection tests
-debug_on = True                #Creates a file debug.txt that contains program logs
+periodicInterval = 300          #Time in seconds between connection tests
+debug_on = False                #Creates a file debug.txt that contains program logs
 
 #-------------------------------------------------------------------------------------------------------------------------------#
 
-#This is the start of the master loop, it controls the entire script and runs forever
+######################################################################################
+#This is the start of the MASTER LOOP, it controls the entire script and runs forever#
+######################################################################################
 while(True):
     debugFile = open("debug.txt","w")
     debugFile.close()
@@ -61,24 +63,12 @@ while(True):
                     creds.append(row)
             csvFile.close()
 
-#-------------------------------------------------------------------------------------------------------------------------------#
-
-    #this used to be a while loop but I moved it and didnt feel like fixing
-    #over 200 line indentions
-
+    #Create a debug and log file
+    log_file_name = create_log_file()
     if debug_on:
         debugFile = open("debug.txt", "a")
 
-    #Set a timer to control when the loop begins
-    print("Periodic timer set for " + str(periodicInterval) + " seconds")
-    os.system("time /T")
-    print("Timer started...")
-    simpleTimer(periodicInterval)
-    print("Begining connection tests")
-    
-    #Checks to see if a log file exists, if not it creates one
-    #This allows a new log file to be created daily when the date changes
-    log_file_name = create_log_file()
+#-------------------------------------------------------------------------------------------------------------------------------#
     
     #attempt to ping the host IP, if it fails generate an email if none have been generated
     #already, or enough time has lapsed since the last email was sent.
@@ -93,10 +83,12 @@ while(True):
             #Test the connection to the host
             pingStatus = checkPing(host[0])
 
+#-------------------------------------------------------------------------------------------------------------------------------#
+
+            #if the connection failed, do the following: write log, track the host, send an email
             if pingStatus == False:
                 if debug_on:
                     debugFile.write("Connection failed\n")
-                #Track the state of failed connections
                 detectedFailures = True
 
                 #Write a new log entry
@@ -176,7 +168,9 @@ while(True):
                 else:
                     failedDevices.append(host[0])
 
+#-------------------------------------------------------------------------------------------------------------------------------#
 
+            #if the connection succeeded, do the following: 
             if pingStatus == True:
                 #if the ping to a previouly failed device succeeds, remove it from the list of failed devices
                 #and notify the admin.
@@ -240,7 +234,8 @@ while(True):
                     '.item{\nbackground-color: #eee;\ndisplay: inline-block;\nmargin: 0 0 1em;\nwidth: 30;\nfont-size: .75em;\n}\n' + 
                     '.normal_font{\nfont-weight: normal;\n}\n' + 
                     '</style>\n' + 
-                    '</head>\n<body>\n' + 
+                    '</head>\n' + 
+                    '<body style="margin:5%;padding:0>\n' + 
                     '<p align="center"><strong>Somerset Connection Status: Updated@ ' + current_time + '</strong></p>\n' + 
                     '<div class="masonry">\n')
     
@@ -335,4 +330,10 @@ while(True):
     out_file.write("</div>\n</body>\n</html>\n")
     out_file.close()
 
-
+    
+    #Set a timer to control when the loop repeats
+    print("Periodic timer set for " + str(periodicInterval) + " seconds")
+    os.system("time /T")
+    print("Timer started...")
+    simpleTimer(periodicInterval)
+    print("Begining connection tests")
