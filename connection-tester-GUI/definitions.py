@@ -90,3 +90,63 @@ def create_log_file():
             delete_log_file = check_output("del /F logs\\" + file, shell=-True).decode()
             
     return log_file_name
+
+
+#I wanted to create a class that would make writting an html file easier.
+#I'll probable just work this out on a future project.
+class html:
+    output_file = ""
+    def __init__(out_file):
+        if not path.exists(out_file):
+            f = open(out_file,"w")
+            f.close()
+            self.output_file = out_file
+    
+    #Creates a basic header and adds come CSS
+    def html_start(title):
+        out_file = open(output_file,"a")
+        print("Writting HTML file...\n")
+        out_file.write('<!DOCTYPE html>\n' + 
+                       '<html lang="en" xmlns="http://www.w3.org/1999/xhtml">\n' +
+                       '<head>\n' + 
+                       '<meta http-equiv="refresh" content="5"; URL="index.html" />\n' + 
+                       '<title>Somerset Connection Status</title>\n' +
+                       '<style>\n' + 
+                       '.masonary{\ncolumn-count: 5;\ncolumn-gap: 1em;\nwidth: 20%;\n}\n' +
+                       '.item{\nbackground-color: #eee;\ndisplay: inline-block;\nmargin: 0 0 1em;\nwidth: 30;\nfont-size: .75em;\n}\n' + 
+                       '.normal_font{\nfont-weight: normal;\n}\n' + 
+                       '</style>\n' + 
+                       '</head>\n<body>\n' + 
+                       '<p align="center"><strong>' + title + '</strong></p>\n' + 
+                       '<div class="masonry">\n')
+
+    #Finishes the body and html sections
+    def html_end():
+        file = open(out_file,"a")
+        file.write("</div>\n</body>\n</html>\n")
+        file.close()
+
+    #Creates a table and it's header
+    def table_start(list, color):
+        file = open(out_file,"a")
+        file.write('<table class="item" border="1" valign="top">\n')
+        for item in list:
+            file.write("<th bgcolor='" + color + "'>" + item + "</th>\n")
+        file.close()
+
+    #Creates a table tow and cells
+    def table_row(list, color):
+        file = open(output_file,"a")
+        file.write("<tr>")
+        for item in list:
+            file.write('<td ' + color + ' align="left" class="normal_font">' + item + '</td>\n')
+        file.write("</tr>")
+        file.close()
+
+    #Finishes the table element
+    def table_end():
+        file = open(out_file,"a")
+        file.write("</table>")
+        file.close()
+
+
