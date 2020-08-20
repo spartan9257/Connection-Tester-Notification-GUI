@@ -5,11 +5,32 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from os import path
 from subprocess import check_output
+from icmplib import ping
 
 
+#The two following functions (checkPing and alt_checkPing) essentially do the same thing.
+#Which function you use will depend on the type of response the host gets when the ping fails.
+#If the response is "Destination host unreachable" then you will need to use the first function.
+#If the response is "Request timed out" then you will need to use the second function. The 
+#function with the name checkPing will be the active one.
 
-#Return true if ping was successful
+#Return true if ping was successful (Destination host unreachable)
 def checkPing(host):
+    response = ping(host, 1, 1)
+    if not response.is_alive:
+        print("1ST connection attempt to " + host + " FAILED!") 
+        response = ping(host, 1, 1)
+    if not response.is_alive:
+        print("2ND connection attempt to " + host + " FAILED!")
+        response = ping(host, 1, 1)
+    if not response.is_alive:
+        print("3RD connection attempt to " + host + " FAILED!")
+        return False
+    else:
+        return True
+
+#Return true if ping was successful (Request timed out) 
+def alt_checkPing(host):
     response = os.system("ping -n 1 " + host)
     if response == 1: response = os.system("ping -n 1 " + host)
     if response == 1: response = os.system("ping -n 1 " + host)
@@ -40,6 +61,7 @@ def sendEmail(sender, passwd, recipients, body, subject, serverInfo):
             server.quit()
         except:
             print("Unable to send email, authentication to server failed!")
+            print("Sender : " + sender)
 
 def create_log_file():
     #create a new log file name using the current date

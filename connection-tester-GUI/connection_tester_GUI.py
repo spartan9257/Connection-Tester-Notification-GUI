@@ -12,7 +12,7 @@ import csv,time,os,subprocess,threading
 print("The Simple Connection Tester v1.1.2")
 
 issue_start_time = 0                 #logs the time of the first failure occurence
-email_alert_periodic_interval = 3600 #sets the interval that the emails will be periodically resent
+email_alert_periodic_interval = 3600 #sets the interval in seconds that the emails will be periodically resent
 minutes_lapsed = 0                   #tracks the minutes that have lapsed since the last email was sent
 last_email_sent_time = 0             #saves the time that the last email was sent
 prior_email_sent = False 
@@ -20,6 +20,18 @@ detected_failures = False
 failed_devices_list = []             #maintains a list of the host's whos connection failed
 periodic_interval = 10               #Time in seconds between connection tests
 debug_on = False                     #Creates a file debug.txt that contains program logs
+page_title = "Central Catholic"      #Used for the tile of the html page
+
+#Open the CSV file containing the list of hosts and append them to a list
+print("Getting hosts information")
+if not path.exists("hosts.csv"):
+    print("Error: hosts.csv not found. Create the file and add it to the same directory as main.py")
+    os.system("pause")
+    exit()
+
+hosts_info = []
+for csv_entry in csv.reader(open("hosts.csv"), delimiter=','):
+    if csv_entry: hosts_info.append(csv_entry)
 
 #-------------------------------------------------------------------------------------------------------------------------------#
 
@@ -29,17 +41,6 @@ debug_on = False                     #Creates a file debug.txt that contains pro
 while(True):
     debugFile = open("debug.txt","w")
     debugFile.close()
-
-    #Open the CSV file containing the list of hosts and append them to a list
-    print("Getting hosts information")
-    if not path.exists("hosts.csv"):
-        print("Error: hosts.csv not found. Create the file and add it to the same directory as main.py")
-        os.system("pause")
-        exit()
-
-    hosts_info = []
-    for csv_entry in csv.reader(open("hosts.csv"), delimiter=','):
-        if csv_entry: hosts_info.append(csv_entry)
 
 #-------------------------------------------------------------------------------------------------------------------------------#
 
@@ -74,109 +75,109 @@ while(True):
         global debug_on
 
         if host[0].find("#") == -1:
-	        print("\n--> ",end=" ")
-	        try: host[3] = int(host[3])
-	        except: print("Interesting Error, please, continue.")
-	        connection_status = checkPing(host[0])
+            try: host[3] = int(host[3])
+            except: print("Interesting Error, please, continue.")
+            connection_status = checkPing(host[0])
 
 #-------------------------------------------------------------------------------------------------------------------------------#
 
-	        #if the connection failed, do the following: write log, track the host, send an email
-	        if connection_status == False:
-		        if debug_on: debugFile.write("Connection failed\n")
-		        detected_failures = True
+            #if the connection failed, do the following: write log, track the host, send an email
+            if connection_status == False:
+                if debug_on: debugFile.write("Connection failed\n")
+                detected_failures = True
 
-		        #Write a new log entry
-		        log_entry = check_output("time /T", shell=True).decode().replace("\n",'')
-		        open(log_file_name,"a").write(log_entry[:len(log_entry)-1] + " Connection to host " + str(host[:3]) + " FAILED\n")
+                #Write a new log entry
+                log_entry = check_output("time /T", shell=True).decode().replace("\n",'')
+                open(log_file_name,"a").write(log_entry[:len(log_entry)-1] + " Connection to host " + str(host[:3]) + " FAILED\n")
 
-		        #check if a previous issue was logged already
-		        if issue_start_time == 0:
-			        print("Logging issue occurence start time")
-			        issue_start_time = int(time.time())
-			        if debug_on:
-				        debugFile.write("issue start time: " + str(issue_start_time) + "\n")
+                #check if a previous issue was logged already
+                if issue_start_time == 0:
+                    print("Logging issue occurence start time")
+                    issue_start_time = int(time.time())
+                    if debug_on:
+                        debugFile.write("issue start time: " + str(issue_start_time) + "\n")
 
 		        #Get all the data needed to send an email notification
-		        body = "WARNING! Connection to host " + str(host[0]) + " failed.\n" + str(host[1]) + "\n" + str(host[2]) 
-		        subject = "Connection Failure"
-		        sender = str(creds[0][0])
-		        passwd = str(creds[0][1])
+                body = "WARNING! Connection to host " + str(host[0]) + " failed.\n" + str(host[1]) + "\n" + str(host[2]) 
+                subject = "Connection Failure"
+                sender = str(creds[0][0])
+                passwd = str(creds[0][1])
 
-		        #Get the recipient(s) email address and the email server's ip/port#
-		        destination_address = []
-		        for email_address in csv.reader(open("email_recipients.csv", "r"), delimiter=','):
-			        if email_address: destination_address.append(email_address)
+                #Get the recipient(s) email address and the email server's ip/port#
+                destination_address = []
+                for email_address in csv.reader(open("email_recipients.csv", "r"), delimiter=','):
+                    if email_address: destination_address.append(email_address)
 
-		        serverInfo = []
-		        for field in csv.reader(open("server_info.csv", "r"), delimiter=','):
-			        if field: serverInfo.append(field)
+                serverInfo = []
+                for field in csv.reader(open("server_info.csv", "r"), delimiter=','):
+                    if field: serverInfo.append(field)
 
-		        #If a prior email hasn't been sent, generate one now.
-		        if host[3] == 0:
-			        if debug_on: debugFile.write("Host last email sent time is 0, sending first email\n")
-			        print("No prior issue logged for this host, generating notification")
-			        sendEmail(sender, passwd, destination_address, body, subject, serverInfo)
+                #If a prior email hasn't been sent, generate one now.
+                if host[3] == 0:
+                    if debug_on: debugFile.write("Host last email sent time is 0, sending first email\n")
+                    print("No prior issue logged for this host, generating notification")
+                    sendEmail(sender, passwd, destination_address, body, subject, serverInfo)
+                    host[3] = time.time() #track the time the email was sent for this host
+                    print(host[3])
+                    if debug_on: debugFile.write("Email sent time logged: " + str(host[3]) + "\n")
 
-			        host[3] = time.time() #track the time the email was sent for this host
-			        if debug_on: debugFile.write("Email sent time logged: " + str(host[3]) + "\n")
+                #If a prior email was sent, check how much time has lapsed. Send another email if the time lapsed exceeds the periodic interval.
+                elif (int(time.time()) - host[3]) / 60 + 1 >= email_alert_periodic_interval:
+                    print("Persistant issue logged again, generating another email")
+                    sendEmail(sender, passwd, destination_address, body, subject, serverInfo)
+                    host[3] = time.time() #track the time the email was sent for this host
+                    print(host[3])
 
-		        #If a prior email was sent, check how much time has lapsed. Send another email if the time lapsed exceeds the periodic interval.
-		        elif (int(time.time()) - host[3]) / 60 + 1 >= email_alert_periodic_interval:
-			        print("Persistant issue logged again, generating another email")
-			        sendEmail(sender, passwd, destination_address, body, subject, serverInfo)
-			        host[3] = time.time() #track the time the email was sent for this host
-
-		        #If the device isnt already in the list of failed devices, add it.
-		        if debug_on: debugFile.write("Current list of failed devices: " + str(failed_devices_list) + "\n")
-		        found = False
-		        #Check the list of failed devices to see if its already being tracked
-		        if failed_devices_list:
-			        for device in failed_devices_list:
-				        if device == host[0]: 
-					        found = True
-					        if debug_on: debugFile.write("host is already in the list of failed devices\n")
-			        if not found:
-				        print("Logging the device as failed.")
-				        failed_devices_list.append(host[0])
-				        if debug_on: debugFile.write("host was not in the list of failed devices adding it not\nfailedDevices: " + str(failed_devices_list) + "\n")
-		        else:
-			        failed_devices_list.append(host[0])
+                #If the device isnt already in the list of failed devices, add it.
+                if debug_on: debugFile.write("Current list of failed devices: " + str(failed_devices_list) + "\n")
+                found = False
+                #Check the list of failed devices to see if its already being tracked
+                if failed_devices_list:
+                    for device in failed_devices_list:
+                        if device == host[0]: 
+                            found = True
+                            if debug_on: debugFile.write("host is already in the list of failed devices\n")
+                    if not found:
+                        print("Logging the device as failed.")
+                        failed_devices_list.append(host[0])
+                        if debug_on: debugFile.write("host was not in the list of failed devices adding it not\nfailedDevices: " + str(failed_devices_list) + "\n")
+                else:
+                    failed_devices_list.append(host[0])
 
 #-------------------------------------------------------------------------------------------------------------------------------#
 
-	        #if the connection succeeded, do the following: 
-	        if connection_status == True:
-		        #if the ping to a previouly failed device succeeds, remove it from the list of failed devices
-		        #and notify the admin.
-		        if debug_on:
-					        debugFile.write("Connection was successful\n")
-		        if detected_failures:
-			        for device in failed_devices_list:
-				        if host[0] == device:
-					        print("Connection to " + host[0] + " Restored")
-					        print("Removing device from the failed log")
+            #if the connection succeeded, do the following: 
+            if connection_status == True:
+                print("Connection to " + host[0] + " SUCCEEDED")
+                #if the ping to a previouly failed device succeeds, remove it from the list of failed devices
+                #and notify the admin.
+                if debug_on:
+                            debugFile.write("Connection was successful\n")
+                if detected_failures:
+                    for device in failed_devices_list:
+                        if host[0] == device:
+                            print("Connection to " + host[0] + " Restored")
+                            print("Removing device from the failed log")
 
-					        #Remove the host and reset its last email sent time tracker to 0
-					        if debug_on: debugFile.write("Removing device from failed devices")
-					        failed_devices_list.remove(host[0])
-					        host[3] = 0
+                            #Remove the host and reset its last email sent time tracker to 0
+                            if debug_on: debugFile.write("Removing device from failed devices")
+                            failed_devices_list.remove(host[0])
+                            host[3] = 0
 
-					        #Send a new email informing the recipient that the connection has been restored
-					        body = "Connection to host " + str(host[0]) + " was restored.\n" + str(host[1]) + "\n" + str(host[2]) 
-					        subject = "Connection Restored!"
-					        sendEmail(sender, passwd, destination_address, body, subject, serverInfo)
+                            #Send a new email informing the recipient that the connection has been restored
+                            body = "Connection to host " + str(host[0]) + " was restored.\n" + str(host[1]) + "\n" + str(host[2]) 
+                            subject = "Connection Restored!"
+                            sendEmail(sender, passwd, destination_address, body, subject, serverInfo)
 
-					        #Create a new log entry
-					        log = open(log_file_name,"a")
-					        log_entry = check_output("time /T", shell=True).decode().replace("\n",'')
-					        log_entry = log_entry[:len(log_entry)-1] + " Connection to host " + str(host[:3]) + " RESTORED\n"
-					        log.write(log_entry)
-					        log.close()
+                            #Create a new log entry
+                            log = open(log_file_name,"a")
+                            log_entry = check_output("time /T", shell=True).decode().replace("\n",'')
+                            log_entry = log_entry[:len(log_entry)-1] + " Connection to host " + str(host[:3]) + " RESTORED\n"
+                            log.write(log_entry)
+                            log.close()
 
-				        #Exit the for loop as soon as a match is found
-				        break
-	        print("<--")
+                            #Exit the for loop as soon as a match is found
+                            break
 
     #Execute main() accross all available cpu cores
     for host in hosts_info:
@@ -207,7 +208,7 @@ while(True):
                     '<html lang="en" xmlns="http://www.w3.org/1999/xhtml">\n' +
                     '<head>\n' + 
                     '<meta http-equiv="refresh" content="5"; URL="index.html" />\n' + 
-                    '<title>Somerset Connection Status</title>\n' +
+                    '<title>' + page_title + 'Connection Status</title>\n' +
                     '<style>\n' + 
                     '.masonary{\ncolumn-count: 5;\ncolumn-gap: 1em;\nwidth: 20%;\n}\n' +
                     '.item{\nbackground-color: #eee;\ndisplay: inline-block;\nmargin: 0 0 1em;\nwidth: 30;\nfont-size: .75em;\n}\n' + 
@@ -215,7 +216,7 @@ while(True):
                     '</style>\n' + 
                     '</head>\n' + 
                     '<body style="margin:5%;padding:0>\n' + 
-                    '<p align="center"><strong>Somerset Connection Status: Updated@ ' + current_time + '</strong></p>\n' + 
+                    '<p align="center"><strong>' + page_title +  ' Connection Status: Updated@ ' + current_time + '</strong></p>\n' + 
                     '<div class="masonry">\n')
     
 #-------------------------------------------------------------------------------------------------------------------------------#
@@ -298,6 +299,7 @@ while(True):
     out_file.write("</table>\n")
     out_file.write("</div>\n</body>\n</html>\n")
     out_file.close()
+
 
     
     #Set a timer to control when the loop repeats
